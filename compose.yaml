@@ -1,1 +1,41 @@
+version: '3.8'
+
 services:
+  postgres:
+    image: postgres:16.2
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: habitsdb
+      POSTGRES_USER: habituser
+      POSTGRES_PASSWORD: habitpass
+      TZ: Europe/Oslo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U habituser -d habitsdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: trackmyhabits
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # Параметры подключения к БД (читаются в application.properties)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/habitsdb
+      SPRING_DATASOURCE_USERNAME: habituser
+      SPRING_DATASOURCE_PASSWORD: habitpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate   # или update / none
+      TZ: Europe/Oslo
+    restart: on-failure
+
+volumes:
+  pgdata:
